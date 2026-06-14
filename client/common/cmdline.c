@@ -5632,6 +5632,7 @@ static int parse_command_line(rdpSettings* settings, const COMMAND_LINE_ARGUMENT
 
 static void warn_credential_args(const COMMAND_LINE_ARGUMENT_A* args)
 {
+	return;
 	WINPR_ASSERT(args);
 	bool insecureArgFound = false;
 	for (size_t x = 0; x < ARRAYSIZE(credential_args); x++)
