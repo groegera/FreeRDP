@@ -498,6 +498,73 @@ static UINT32 xf_keyboard_get_toggle_keys_state(xfContext* xfc);
 static BOOL xf_keyboard_handle_special_keys(xfContext* xfc, KeySym keysym);
 static void xf_keyboard_handle_special_keys_release(xfContext* xfc, KeySym keysym);
 
+static const char* keyspec(XF_MODIFIER_KEYS* mod, KeySym keysym) {
+	static char combination[1024] = {0};
+	combination[0]=0;
+
+	const char* keyStr = XKeysymToString(keysym);
+
+	if (keysym && keyStr == nullptr)
+	{
+		return "<error>";
+	}
+
+#if 0
+	if (mod->Shift)
+	{
+		winpr_str_append("Shift_", combination, sizeof(combination), "+");
+		if (mod->LeftShift) winpr_str_append("L", combination, sizeof(combination), "");
+		if (mod->RightShift) winpr_str_append("R", combination, sizeof(combination), "");
+	}
+
+	if (mod->Ctrl)
+	{
+		winpr_str_append("Ctrl_", combination, sizeof(combination), "+");
+		if (mod->LeftCtrl) winpr_str_append("L", combination, sizeof(combination), "");
+		if (mod->RightCtrl) winpr_str_append("R", combination, sizeof(combination), "");
+	}
+
+	if (mod->Alt)
+	{
+		winpr_str_append("Alt_", combination, sizeof(combination), "+");
+		if (mod->LeftAlt) winpr_str_append("L", combination, sizeof(combination), "");
+		if (mod->RightAlt) winpr_str_append("R", combination, sizeof(combination), "");
+	}
+
+	if (mod->Super)
+	{
+		winpr_str_append("Super_", combination, sizeof(combination), "+");
+		if (mod->LeftSuper) winpr_str_append("L", combination, sizeof(combination), "");
+		if (mod->RightSuper) winpr_str_append("R", combination, sizeof(combination), "");
+	}
+
+	if (keysym)
+		winpr_str_append(keyStr, combination, sizeof(combination), "+");
+
+	//for (size_t i = 0; i < strnlen(combination, sizeof(combination)); i++)
+	//	combination[i] = WINPR_ASSERTING_INT_CAST(char, tolower(combination[i]));
+#else
+	if (mod->Shift)
+		winpr_str_append("Shift", combination, sizeof(combination), "+");
+
+	if (mod->Ctrl)
+		winpr_str_append("Ctrl", combination, sizeof(combination), "+");
+
+	if (mod->Alt)
+		winpr_str_append("Alt", combination, sizeof(combination), "+");
+
+	if (mod->Super)
+		winpr_str_append("Super", combination, sizeof(combination), "+");
+
+	if (keysym)
+		winpr_str_append(keyStr, combination, sizeof(combination), "+");
+
+	for (size_t i = 0; i < strnlen(combination, sizeof(combination)); i++)
+		combination[i] = WINPR_ASSERTING_INT_CAST(char, tolower(combination[i]));
+#endif
+	return combination;
+}
+
 static void xf_keyboard_modifier_map_free(xfContext* xfc)
 {
 	WINPR_ASSERT(xfc);
@@ -1197,8 +1264,14 @@ static void xk_keyboard_update_modifier_keys(xfContext* xfc)
 			const KeyCode keycode = XKeysymToKeycode(xfc->display, keysyms[i]);
 			WINPR_ASSERT(keycode < ARRAYSIZE(xfc->KeyboardState));
 			xfc->KeyboardState[keycode] = TRUE;
+			//WLog_INFO(TAG, "keycode %d [%d] state=%x mask=%x",
+			//		 (int)i, keycode, state , xf_keyboard_get_keymask(xfc, keysyms[i]));
 		}
 	}
+
+	XF_MODIFIER_KEYS mod = WINPR_C_ARRAY_INIT;
+	xk_keyboard_get_modifier_keys(xfc, &mod);
+	WLog_INFO(TAG, "modifiers=%s", keyspec(&mod, 0));
 }
 
 void xf_keyboard_focus_in(xfContext* xfc)
@@ -1361,6 +1434,7 @@ BOOL xf_keyboard_handle_special_keys(xfContext* xfc, KeySym keysym)
 {
 	XF_MODIFIER_KEYS mod = WINPR_C_ARRAY_INIT;
 	xk_keyboard_get_modifier_keys(xfc, &mod);
+	WLog_INFO(TAG, "xf_keyboard_handle_special_key <%s> ...", keyspec(&mod, keysym));
 
 	// remember state of RightCtrl to ungrab keyboard if next action is release of RightCtrl
 	// do not return anything such that the key could be used by client if ungrab is not the goal

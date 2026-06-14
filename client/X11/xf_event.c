@@ -43,6 +43,7 @@
 
 #include "xf_debug.h"
 #include "xf_event.h"
+#define TAG CLIENT_TAG("x11")
 
 #define CLAMP_COORDINATES(x, y) \
 	do                          \
@@ -182,6 +183,15 @@ static BOOL xf_action_script_append(xfContext* xfc, const char* buffer, size_t s
 		return FALSE;
 	}
 	return TRUE;
+}
+static const char* focus_mode(int mode) {
+	switch (mode) {
+	case NotifyNormal:       return "NotifyNormal";
+	case NotifyGrab:         return "NotifyGrab";
+	case NotifyUngrab:       return "NotifyUngrab";
+	case NotifyWhileGrabbed: return "NotifyWhileGrabbed";
+	}
+	return "";
 }
 
 BOOL xf_event_action_script_init(xfContext* xfc)
@@ -576,6 +586,7 @@ static BOOL xf_grab_kbd(xfContext* xfc)
 
 	XGrabKeyboard(xfc->display, xfc->window->handle, TRUE, GrabModeAsync, GrabModeAsync,
 	              CurrentTime);
+	WLog_INFO(TAG, "grab keyboard");
 	return TRUE;
 }
 
@@ -661,8 +672,16 @@ static BOOL xf_event_KeyReleaseOrIgnore(xfContext* xfc, const XKeyEvent* event, 
 
 static BOOL xf_event_FocusIn(xfContext* xfc, const XFocusInEvent* event, BOOL app)
 {
+#if 1
 	if (event->mode == NotifyGrab)
+#else
+	if (event->mode == NotifyGrab || event->mode == NotifyUngrab)
+#endif
+	{
+		WLog_INFO(TAG, "mode=%s (ignored)", focus_mode(event->mode));
 		return TRUE;
+	}
+	WLog_INFO(TAG, "mode=%s", focus_mode(event->mode));
 
 	xfc->focused = TRUE;
 
@@ -702,15 +721,27 @@ static BOOL xf_event_FocusIn(xfContext* xfc, const XFocusInEvent* event, BOOL ap
 
 static BOOL xf_event_FocusOut(xfContext* xfc, const XFocusOutEvent* event, BOOL app)
 {
+#if 0
 	if (event->mode == NotifyUngrab)
+#else
+	if (event->mode == NotifyUngrab || event->mode == NotifyGrab)
+#endif
+	{
+		WLog_INFO(TAG, "mode=%s (ignored)", focus_mode(event->mode));
 		return TRUE;
+	}
+	WLog_INFO(TAG, "mode=%s", focus_mode(event->mode));
 
 	xfc->focused = FALSE;
 
 	if (event->mode == NotifyWhileGrabbed)
+	{
 		XUngrabKeyboard(xfc->display, CurrentTime);
+		WLog_INFO(TAG, "ungrab keyboard");
+	}
 
 	xf_keyboard_release_all_keypress(xfc);
+	WLog_INFO(TAG, "release all keypress");
 	if (app)
 		return xf_rail_send_activate(xfc, event->window, FALSE);
 
